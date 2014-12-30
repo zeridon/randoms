@@ -1,0 +1,5 @@
+This mod will enable integration with the old CSV style user db used on the front site.
+
+This one release is for the real site with the real data
+
+NOTE: Correct the propper path $LBG_USER_DB

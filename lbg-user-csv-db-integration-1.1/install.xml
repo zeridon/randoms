@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<!DOCTYPE modification SYSTEM "http://www.simplemachines.org/xml/modification">
+<modification xmlns="http://www.simplemachines.org/xml/modification" xmlns:smf="http://www.simplemachines.org/">
+	<id>zeridon:lbgintegration</id>
+	<version>1.1</version>
+
+	<file name="$sourcedir/LogInOut.php">
+		<operation>
+			<search position="before"><![CDATA[// Perform the actual logging-in.
+function Login2()
+{
+	global $txt, $scripturl, $user_info, $user_settings, $smcFunc;
+	global $cookiename, $maintenance, $modSettings, $context, $sc, $sourcedir;]]></search>
+			<add><![CDATA[
+
+//lbg integration
+$LBG_user = isset($_REQUEST['user']) ? preg_replace('~&amp;#(\\d{1,7}|x[0-9a-fA-F]{1,6});~', '&#\\1;', htmlspecialchars($_REQUEST['user'])) : '';
+if ($LBG_user){
+	$request = $smcFunc['db_query']('','
+		SELECT id_member, member_name
+		FROM {db_prefix}members
+		WHERE member_name = {string:LBG_user}
+		LIMIT 1',
+		array (
+			'LBG_user' => $smcFunc['db_case_sensitive'] ? strtolower($_REQUEST['user']) : $_REQUEST['user'],
+		)
+	);
+	if ($smcFunc['db_num_rows']($request) == 0){
+		$smcFunc['db_free_result']($request);
+		// nope ... it is not in the db ... find it and stuff the data
+		$LBG_USER_DB = 'user.tbl';
+		$fh = @fopen($LBG_USER_DB, 'r');
+		if ($fh) {
+			while (!feof($fh)) {
+				$line = fgets($fh, 4096);
+				$fieldset = explode('|', $line);
+				if (!$fieldset['1']) break;
+				if ($fieldset['1'] == $LBG_user) {
+					$reg_date=time();
+					$smcFunc['db_insert']('ignore','{db_prefix}members',
+						array(
+							'member_name' => 'string',
+							'real_name' => 'string',
+							'passwd' => 'string',
+							'email_address' => 'string',
+							'hide_email' => 'int',
+							'password_salt' => 'string',
+							'date_registered' => 'int'
+						),
+						array(
+							$fieldset[1],
+							$fieldset[1],
+							sha1(strtolower($fieldset[1]) . $fieldset[2]),
+							$fieldset[4],
+							1,
+							substr(md5(mt_rand()), 0, 4),
+							$reg_date
+						),
+						array(
+							'id_member'
+						)
+					);
+				}
+			}
+			fclose($fh);
+		}
+	}
+}
+//lbg integration end
+
+]]></add>
+		</operation>
+	</file>
+</modification>
